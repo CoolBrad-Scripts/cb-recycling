@@ -70,13 +70,16 @@ end
 function ScrappingItem(item, stashName, amount, slot)
     local items = exports.ox_inventory:GetInventoryItems(stashName)
     local availableSlots = {}
+    local existingItemSlots = {}
     
-    -- Check which output slots (6-10) are available
+    -- Check which output slots (6-10) are available and track existing items
     for i = 6, 10 do
         local slotOccupied = false
         for k, v in pairs(items) do
             if v.slot == i then
                 slotOccupied = true
+                -- Track what items are in which slots
+                existingItemSlots[v.name] = i
                 break
             end
         end
@@ -88,19 +91,44 @@ function ScrappingItem(item, stashName, amount, slot)
     -- Calculate how many rewards we'll give
     local rewardAmount = math.random(Config.ItemPool[stashName][1].minReward, Config.ItemPool[stashName][1].maxReward)
     
-    -- Check if we have enough available slots for all rewards
-    if #availableSlots >= rewardAmount then
+    -- Generate all rewards first
+    local rewards = {}
+    for i = 1, rewardAmount do
+        local randomItem = Config.ItemPool[stashName][1].pool[math.random(1, #Config.ItemPool[stashName][1].pool)]
+        local randomAmount = math.random(randomItem.min, randomItem.max)
+        table.insert(rewards, {item = randomItem.item, amount = randomAmount})
+    end
+    
+    -- Check if we can place all rewards (either in existing slots or new slots)
+    local slotsNeeded = 0
+    local uniqueNewItems = {}
+    for _, reward in pairs(rewards) do
+        if not existingItemSlots[reward.item] and not uniqueNewItems[reward.item] then
+            uniqueNewItems[reward.item] = true
+            slotsNeeded = slotsNeeded + 1
+        end
+    end
+    
+    if slotsNeeded <= #availableSlots then
         exports.ox_inventory:RemoveItem(stashName, item, amount, nil, slot, false)
         
-        for i = 1, rewardAmount do
-            local randomItem = Config.ItemPool[stashName][1].pool[math.random(1, #Config.ItemPool[stashName][1].pool)]
-            local randomAmount = math.random(randomItem.min, randomItem.max)
-            local targetSlot = availableSlots[i] -- Use a different slot for each reward
-            exports.ox_inventory:AddItem(stashName, randomItem.item, randomAmount, nil, targetSlot, false)
+        local availableSlotIndex = 1
+        for _, reward in pairs(rewards) do
+            if existingItemSlots[reward.item] then
+                -- Item already exists, add to existing slot
+                exports.ox_inventory:AddItem(stashName, reward.item, reward.amount, nil, existingItemSlots[reward.item], false)
+            else
+                -- New item, use an available slot
+                local targetSlot = availableSlots[availableSlotIndex]
+                exports.ox_inventory:AddItem(stashName, reward.item, reward.amount, nil, targetSlot, false)
+                -- Track this new item in case we get more of the same type
+                existingItemSlots[reward.item] = targetSlot
+                availableSlotIndex = availableSlotIndex + 1
+            end
         end
         return true -- Success
     else
-        print("Not enough available space in output slots (6-10) for " .. rewardAmount .. " rewards. Available slots: " .. #availableSlots)
+        print("Not enough available space in output slots (6-10) for " .. slotsNeeded .. " unique new items. Available slots: " .. #availableSlots)
         return false -- Failure
     end
 end
