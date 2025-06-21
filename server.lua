@@ -14,8 +14,8 @@ function Scrapping(stashName)
         while scrapping do
             local items = exports.ox_inventory:GetInventoryItems(stashName)
             if not next(items) then
-                print("No more items to scrap")
                 scrapping = false
+                TriggerClientEvent('cb-recycling:client:StopRecycling', -1, stashName)
                 break
             end
 
@@ -25,8 +25,14 @@ function Scrapping(stashName)
                     if IsItemScrappable(v.name, stashName) then
                         foundSomething = true
                         Wait(1500)
-                        ScrappingItem(v.name, stashName, 1, v.slot)
-                        break
+                        local success = ScrappingItem(v.name, stashName, 1, v.slot)
+                        if not success then
+                            -- Stop scrapping if there's not enough space for rewards
+                            scrapping = false
+                            TriggerClientEvent('cb-recycling:client:StopRecycling', -1, stashName)
+                            print("Stopping recycling due to insufficient output space")
+                            return
+                        end
                     else
                         print("Item not scrappable")
                     end
@@ -34,8 +40,9 @@ function Scrapping(stashName)
             end
 
             if not foundSomething then
-                print("No more items to scrap")
                 scrapping = false
+                TriggerClientEvent('cb-recycling:client:StopRecycling', -1, stashName)
+                break
             end
             Wait(100)
         end
@@ -62,53 +69,39 @@ end
 
 function ScrappingItem(item, stashName, amount, slot)
     local items = exports.ox_inventory:GetInventoryItems(stashName)
-    local availableSpace = false
-    local slot6 = false
-    local slot7 = false
-    local slot8 = false
-    local slot9 = false
-    local slot10 = false
-    local availableSlot = 0
-    for k, v in pairs(items) do
-        if v.slot == 6 then
-            print("Slot 6 found")
-            slot6 = true
-        elseif v.slot == 7 then
-            print("Slot 7 found")
-            slot7 = true
-        elseif v.slot == 8 then
-            print("Slot 8 found")
-            slot8 = true
-        elseif v.slot == 9 then
-            print("Slot 9 found")
-            slot9 = true
-        elseif v.slot == 10 then
-            print("Slot 10 found")
-            slot10 = true
+    local availableSlots = {}
+    
+    -- Check which output slots (6-10) are available
+    for i = 6, 10 do
+        local slotOccupied = false
+        for k, v in pairs(items) do
+            if v.slot == i then
+                slotOccupied = true
+                break
+            end
+        end
+        if not slotOccupied then
+            table.insert(availableSlots, i)
         end
     end
-    if slot6 and slot7 and slot8 and slot9 and slot10 then
-        availableSpace = false
-    else
-        availableSpace = true
-        if not slot6 then
-            availableSlot = 6
-        elseif not slot7 then
-            availableSlot = 7
-        elseif not slot8 then
-            availableSlot = 8
-        elseif not slot9 then
-            availableSlot = 9
-        elseif not slot10 then
-            availableSlot = 10
+    
+    -- Calculate how many rewards we'll give
+    local rewardAmount = math.random(Config.ItemPool[stashName][1].minReward, Config.ItemPool[stashName][1].maxReward)
+    
+    -- Check if we have enough available slots for all rewards
+    if #availableSlots >= rewardAmount then
+        exports.ox_inventory:RemoveItem(stashName, item, amount, nil, slot, false)
+        
+        for i = 1, rewardAmount do
+            local randomItem = Config.ItemPool[stashName][1].pool[math.random(1, #Config.ItemPool[stashName][1].pool)]
+            local randomAmount = math.random(randomItem.min, randomItem.max)
+            local targetSlot = availableSlots[i] -- Use a different slot for each reward
+            exports.ox_inventory:AddItem(stashName, randomItem.item, randomAmount, nil, targetSlot, false)
         end
-    end
-    if availableSpace then
-        print(availableSlot)
-        exports.ox_inventory:RemoveItem(stashName, item, amount, nil, slot, true)
-        exports.ox_inventory:AddItem(stashName, "sandwich", 1, nil, availableSlot, true)
+        return true -- Success
     else
-        print("No available space in output slots (6-10)")
+        print("Not enough available space in output slots (6-10) for " .. rewardAmount .. " rewards. Available slots: " .. #availableSlots)
+        return false -- Failure
     end
 end
 
@@ -128,7 +121,7 @@ end)
 RegisterNetEvent('cb-recycling:server:StopRecycling', function(stashName)
     local src = source
     if src == nil then return end
-    print("Stop Recycling")
+    TriggerClientEvent('cb-recycling:client:StopRecycling', -1, stashName)
 end)
 
 CreateThread(function()

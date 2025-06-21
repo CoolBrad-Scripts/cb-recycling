@@ -1,4 +1,5 @@
 Bridge = exports.community_bridge:Bridge()
+local recyclers = {}
 
 function CreateRecylcer()
     for k, v in pairs(Config.Recycler) do
@@ -8,7 +9,7 @@ function CreateRecylcer()
         SetEntityCoords(prop, coords.x, coords.y, coords.z, false, false, false, false)
         SetEntityRotation(prop, v.rotation.x, v.rotation.y, v.rotation.z, 0, false)
         FreezeEntityPosition(prop, true)
-        local started = false
+        recyclers[v.stashName] = false
         local options = {
             {
                 label = "Open Recycler",
@@ -26,11 +27,11 @@ function CreateRecylcer()
                 icon = "fa-solid fa-recycle",
                 iconColor = "green",
                 onSelect = function()
-                    started = true
+                    recyclers[v.stashName] = true
                     TriggerServerEvent('cb-recycling:server:StartRecycling', v.stashName)
                 end,
                 canInteract = function()
-                    return not started
+                    return not recyclers[v.stashName]
                 end
             },
             {
@@ -38,11 +39,11 @@ function CreateRecylcer()
                 icon = "fa-solid fa-recycle",
                 iconColor = "red",
                 onSelect = function()
-                    started = false
+                    recyclers[v.stashName] = false
                     TriggerServerEvent('cb-recycling:server:StopRecycling', v.stashName)
                 end,
                 canInteract = function()
-                    return started
+                    return recyclers[v.stashName]
                 end
             }
         }
@@ -53,3 +54,8 @@ end
 RegisterCommand('recycle', function()
     CreateRecylcer()
 end, false)
+
+RegisterNetEvent('cb-recycling:client:StopRecycling', function(stashName)
+    print("No more items to scrap")
+    recyclers[stashName] = false
+end)
