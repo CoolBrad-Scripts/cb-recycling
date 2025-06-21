@@ -8,7 +8,7 @@ function RegisterRecycler()
     end
 end
 
-function Scrapping(stashName)
+function Scrapping(stashName, efficiency)
     local scrapping = true
     CreateThread(function()
         while scrapping do
@@ -25,7 +25,7 @@ function Scrapping(stashName)
                     if IsItemScrappable(v.name, stashName) then
                         foundSomething = true
                         Wait(1500)
-                        local success = ScrappingItem(v.name, stashName, 1, v.slot)
+                        local success = ScrappingItem(v.name, stashName, 1, v.slot, efficiency)
                         if not success then
                             -- Stop scrapping if there's not enough space for rewards
                             scrapping = false
@@ -50,11 +50,11 @@ function Scrapping(stashName)
 end
 
 function IsItemScrappable(item, stashName)
-    for k, v in pairs(Config.ItemPool) do
-        if k == stashName then
+    for k, v in pairs(Config.Recycler) do
+        if v.stashName == stashName then
             local itemFound = false
-            for a, b in pairs(v) do
-                if b.item == string.lower(item) then
+            for a, b in pairs(v.items) do
+                if b == string.lower(item) then
                     itemFound = true
                     break
                 end
@@ -67,7 +67,7 @@ function IsItemScrappable(item, stashName)
     return false
 end
 
-function ScrappingItem(item, stashName, amount, slot)
+function ScrappingItem(item, stashName, amount, slot, efficiency)
     local items = exports.ox_inventory:GetInventoryItems(stashName)
     local availableSlots = {}
     local existingItemSlots = {}
@@ -89,13 +89,15 @@ function ScrappingItem(item, stashName, amount, slot)
     end
     
     -- Calculate how many rewards we'll give
-    local rewardAmount = math.random(Config.ItemPool[stashName][1].minReward, Config.ItemPool[stashName][1].maxReward)
+    item = string.lower(item)
+    local recyclable = Config.Recyclables[item]
+    local rewardAmount = math.random(recyclable.minReward, recyclable.maxReward)
     
     -- Generate all rewards first
     local rewards = {}
     for i = 1, rewardAmount do
-        local randomItem = Config.ItemPool[stashName][1].pool[math.random(1, #Config.ItemPool[stashName][1].pool)]
-        local randomAmount = math.random(randomItem.min, randomItem.max)
+        local randomItem = Config.Recyclables[item].rewards[math.random(1, #Config.Recyclables[item].rewards)]
+        local randomAmount = math.ceil(math.random(randomItem.min, randomItem.max) * (efficiency / 100))
         table.insert(rewards, {item = randomItem.item, amount = randomAmount})
     end
     
@@ -108,7 +110,6 @@ function ScrappingItem(item, stashName, amount, slot)
             slotsNeeded = slotsNeeded + 1
         end
     end
-    
     if slotsNeeded <= #availableSlots then
         exports.ox_inventory:RemoveItem(stashName, item, amount, nil, slot, false)
         
@@ -142,8 +143,12 @@ end)
 RegisterNetEvent('cb-recycling:server:StartRecycling', function(stashName)
     local src = source
     if src == nil then return end
-    Bridge.Inventory.OpenStash(src, "stash", stashName)
-    Scrapping(stashName)
+    for k, v in pairs(Config.Recycler) do
+        if v.stashName == stashName then
+            Bridge.Inventory.OpenStash(src, "stash", stashName)
+            Scrapping(stashName, v.efficiency)
+        end
+    end
 end)
 
 RegisterNetEvent('cb-recycling:server:StopRecycling', function(stashName)
