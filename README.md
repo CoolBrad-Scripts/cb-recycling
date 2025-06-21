@@ -3,6 +3,9 @@
 ## Description
 **This is a Rust-like recycling script for FiveM. It gives the players the ability to recycle items into smaller components, with the necessary restrictions.**
 
+## Showcase
+[![Showcase Video](https://img.youtube.com/vi/ZG_ajsKuK7E/maxresdefault.jpg)](https://youtu.be/ZG_ajsKuK7E)
+
 ## Features:
 - Recycle items into smaller components (just like Rust)
 - Open Source (What more could you ask for)
