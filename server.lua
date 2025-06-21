@@ -3,7 +3,7 @@ Bridge = exports.community_bridge:Bridge()
 function RegisterRecycler()
     for k, v in pairs(Config.Recycler) do
         local stashName = v.stashName
-        local stashWeight = 10000
+        local stashWeight = 1000000
         Bridge.Inventory.RegisterStash(stashName, stashName, 10, stashWeight, nil, nil, nil)
     end
 end
@@ -30,7 +30,6 @@ function Scrapping(stashName, efficiency)
                             -- Stop scrapping if there's not enough space for rewards
                             scrapping = false
                             TriggerClientEvent('cb-recycling:client:StopRecycling', -1, stashName)
-                            print("Stopping recycling due to insufficient output space")
                             return
                         end
                     else
@@ -101,19 +100,42 @@ function ScrappingItem(item, stashName, amount, slot, efficiency)
         table.insert(rewards, {item = randomItem.item, amount = randomAmount})
     end
     
+    -- Check for bonus reward
+    local bonusReward = nil
+    if recyclable.bonusRewardChance and recyclable.bonusReward then
+        local bonusChance = math.random(1, 100)
+        if bonusChance <= recyclable.bonusRewardChance then
+            local randomBonusItem = recyclable.bonusReward[math.random(1, #recyclable.bonusReward)]
+            local bonusAmount = math.ceil(math.random(randomBonusItem.min, randomBonusItem.max) * (efficiency / 100))
+            bonusReward = {item = randomBonusItem.item, amount = bonusAmount}
+        end
+    end
+    
     -- Check if we can place all rewards (either in existing slots or new slots)
     local slotsNeeded = 0
     local uniqueNewItems = {}
+    
+    -- Check slots needed for regular rewards
     for _, reward in pairs(rewards) do
         if not existingItemSlots[reward.item] and not uniqueNewItems[reward.item] then
             uniqueNewItems[reward.item] = true
             slotsNeeded = slotsNeeded + 1
         end
     end
+    
+    -- Check slots needed for bonus reward if it exists
+    if bonusReward and not existingItemSlots[bonusReward.item] and not uniqueNewItems[bonusReward.item] then
+        uniqueNewItems[bonusReward.item] = true
+        slotsNeeded = slotsNeeded + 1
+    end
+    
+    -- Only proceed if we have enough slots for all rewards (including bonus)
     if slotsNeeded <= #availableSlots then
         exports.ox_inventory:RemoveItem(stashName, item, amount, nil, slot, false)
         
         local availableSlotIndex = 1
+        
+        -- Place regular rewards
         for _, reward in pairs(rewards) do
             if existingItemSlots[reward.item] then
                 -- Item already exists, add to existing slot
@@ -127,10 +149,22 @@ function ScrappingItem(item, stashName, amount, slot, efficiency)
                 availableSlotIndex = availableSlotIndex + 1
             end
         end
+        
+        -- Place bonus reward if it exists
+        if bonusReward then
+            if existingItemSlots[bonusReward.item] then
+                -- Bonus item already exists, add to existing slot
+                exports.ox_inventory:AddItem(stashName, bonusReward.item, bonusReward.amount, nil, existingItemSlots[bonusReward.item], false)
+            else
+                -- New bonus item, use an available slot
+                local targetSlot = availableSlots[availableSlotIndex]
+                exports.ox_inventory:AddItem(stashName, bonusReward.item, bonusReward.amount, nil, targetSlot, false)
+            end
+        end
+        
         return true -- Success
     else
-        print("Not enough available space in output slots (6-10) for " .. slotsNeeded .. " unique new items. Available slots: " .. #availableSlots)
-        return false -- Failure
+        return false -- Failure - not enough slots for all rewards including bonus
     end
 end
 
@@ -159,4 +193,61 @@ end)
 
 CreateThread(function()
     RegisterRecycler()
+end)
+
+function SwapItems(payload)
+    for k, v in pairs(Config.Recycler) do
+        if (payload.fromInventory == payload.source) and (payload.toInventory == v.stashName) then
+            if payload.action == "move" then
+                local item = payload.fromSlot.name
+                local slot = payload.toSlot
+                if slot == 6 or slot == 7 or slot == 8 or slot == 9 or slot == 10 then
+                    return false
+                end
+                if IsItemScrappable(item, v.stashName) then
+                    return true
+                else
+                    return false
+                end
+            elseif payload.action == "swap" then
+                local item = payload.fromSlot.name
+                local otherItem = payload.toSlot.name
+                if IsItemScrappable(item, v.stashName) and IsItemScrappable(otherItem, v.stashName) then
+                    return true
+                else
+                    return false
+                end
+            end
+            break
+        elseif payload.fromInventory == v.stashName and payload.toInventory == payload.source then
+            if payload.action == "move" then
+                local item = payload.fromSlot.name
+                local slot = payload.toSlot
+                if slot == 6 or slot == 7 or slot == 8 or slot == 9 or slot == 10 then
+                    return false
+                end
+                if IsItemScrappable(item, v.stashName) then
+                    return true
+                else
+                    return false
+                end
+            elseif payload.action == "swap" then
+                local item = payload.fromSlot.name
+                local otherItem = payload.toSlot.name
+                if IsItemScrappable(item, v.stashName) and IsItemScrappable(otherItem, v.stashName) then
+                    return true
+                else
+                    return false
+                end
+            end
+            break
+        end
+    end
+end
+
+CreateThread( function()
+    local hookId = exports.ox_inventory:registerHook('swapItems', function(payload)
+        local result = SwapItems(payload)
+        return result
+    end, {})
 end)

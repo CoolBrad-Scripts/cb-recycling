@@ -20,7 +20,11 @@ Config.Recyclables = {
         maxReward = 3,
         rewards = {
             {item = "metalscrap", chance = 10, min = 5, max = 10},
-            {item = "steel", chance = 10, min = 8, max = 10},
+            {item = "copper", chance = 10, min = 2, max = 3},
+        },
+        bonusRewardChance = 100,
+        bonusReward = {
+            {item = "steel", chance = 10, min = 1, max = 1},
         }
     }
 }
