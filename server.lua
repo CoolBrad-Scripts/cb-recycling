@@ -1,4 +1,5 @@
 Bridge = exports.community_bridge:Bridge()
+Recyclers = {}
 
 function RegisterRecycler()
     for k, v in pairs(Config.Recycler) do
@@ -21,6 +22,12 @@ function Scrapping(stashName, efficiency)
 
             local foundSomething = false
             for k, v in pairs(items) do
+                if not Recyclers[stashName] then
+                    scrapping = false
+                    Recyclers[stashName] = false
+                    TriggerClientEvent('cb-recycling:client:StopRecycling', -1, stashName)
+                    break
+                end
                 if v.slot >= 1 and v.slot <= 5 then
                     if IsItemScrappable(v.name, stashName) then
                         foundSomething = true
@@ -29,6 +36,7 @@ function Scrapping(stashName, efficiency)
                         if not success then
                             -- Stop scrapping if there's not enough space for rewards
                             scrapping = false
+                            Recyclers[stashName] = false
                             TriggerClientEvent('cb-recycling:client:StopRecycling', -1, stashName)
                             return
                         end
@@ -40,6 +48,7 @@ function Scrapping(stashName, efficiency)
 
             if not foundSomething then
                 scrapping = false
+                Recyclers[stashName] = false
                 TriggerClientEvent('cb-recycling:client:StopRecycling', -1, stashName)
                 break
             end
@@ -106,7 +115,7 @@ function ScrappingItem(item, stashName, amount, slot, efficiency)
         local bonusChance = math.random(1, 100)
         if bonusChance <= recyclable.bonusRewardChance then
             local randomBonusItem = recyclable.bonusReward[math.random(1, #recyclable.bonusReward)]
-            local bonusAmount = math.ceil(math.random(randomBonusItem.min, randomBonusItem.max) * (efficiency / 100))
+            local bonusAmount = math.random(randomBonusItem.min, randomBonusItem.max)
             bonusReward = {item = randomBonusItem.item, amount = bonusAmount}
         end
     end
@@ -181,6 +190,7 @@ RegisterNetEvent('cb-recycling:server:StartRecycling', function(stashName)
         if v.stashName == stashName then
             Bridge.Inventory.OpenStash(src, "stash", stashName)
             Scrapping(stashName, v.efficiency)
+            Recyclers[stashName] = true
         end
     end
 end)
@@ -189,6 +199,7 @@ RegisterNetEvent('cb-recycling:server:StopRecycling', function(stashName)
     local src = source
     if src == nil then return end
     TriggerClientEvent('cb-recycling:client:StopRecycling', -1, stashName)
+    Recyclers[stashName] = false
 end)
 
 CreateThread(function()
@@ -218,29 +229,13 @@ function SwapItems(payload)
                     return false
                 end
             end
-            break
         elseif payload.fromInventory == v.stashName and payload.toInventory == payload.source then
-            if payload.action == "move" then
-                local item = payload.fromSlot.name
-                local slot = payload.toSlot
-                if slot == 6 or slot == 7 or slot == 8 or slot == 9 or slot == 10 then
-                    return false
-                end
-                if IsItemScrappable(item, v.stashName) then
-                    return true
-                else
-                    return false
-                end
-            elseif payload.action == "swap" then
-                local item = payload.fromSlot.name
-                local otherItem = payload.toSlot.name
-                if IsItemScrappable(item, v.stashName) and IsItemScrappable(otherItem, v.stashName) then
-                    return true
-                else
-                    return false
-                end
+            if Recyclers[v.stashName] then
+                return false
             end
-            break
+            if payload.action == "swap" then
+                return false
+            end
         end
     end
 end
