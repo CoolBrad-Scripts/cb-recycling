@@ -1,9 +1,9 @@
 Config = {}
 Config.Recycler = {
     [1] = {
-        coords = vec3(2021.62, 4972.9, 40.27),
-        model = "prop_cooker_03",
-        rotation = vec3(0.0, 0.0, 0.0),
+        coords = vec3(2024.76, 4979.31, 40.70),
+        model = "bzzz_prop_recycler_a",
+        rotation = vec3(0.0, 0.0, -45.0),
         stashName = "recycler1",
         efficiency = 60,
         items = {
