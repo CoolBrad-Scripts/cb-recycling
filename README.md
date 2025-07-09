@@ -17,6 +17,7 @@ Download the Rust-Inspired Recycling prop on [Tebex](https://bzzz.tebex.io/packa
 
 ## Dependencies
 - ox_inventory
+- [community_bridge](https://github.com/The-Order-of-the-Sacred-Framework/community_bridge)
 
 # Help and Support
 If you require any assistance with this script or run into any issues, I would be happy to assist you. Please open a ticket in my [Discord](https://discord.gg/FQtN5FXcG5)
