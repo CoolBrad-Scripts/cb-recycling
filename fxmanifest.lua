@@ -2,7 +2,7 @@ fx_version 'cerulean'
 game 'gta5'
 
 author 'Cool Brad Scripts'
-version '1.0.0'
+version '1.0.1'
 description 'A recycling script for FiveM RP servers'
 
 shared_scripts {
