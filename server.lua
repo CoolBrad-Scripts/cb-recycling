@@ -3,7 +3,7 @@ Recyclers = {}
 
 AddEventHandler('onResourceStart', function(resource)
     if resource ~= GetCurrentResourceName() then return end
-    Bridge.Version.AdvancedVersionChecker("CoolBrad-Scripts/patchnotes", "cb-recycling")
+    Bridge.Version.AdvancedVersionChecker("CoolBrad-Scripts/cb-patchnotes", resource)
 end)
 
 function RegisterRecycler()
