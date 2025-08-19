@@ -1,6 +1,11 @@
 Bridge = exports.community_bridge:Bridge()
 Recyclers = {}
 
+AddEventHandler('onResourceStart', function(resource)
+    if resource ~= GetCurrentResourceName() then return end
+    Bridge.Version.AdvancedVersionChecker("CoolBrad-Scripts/patchnotes", "cb-recycling")
+end)
+
 function RegisterRecycler()
     for k, v in pairs(Config.Recycler) do
         local stashName = v.stashName
