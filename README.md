@@ -13,11 +13,11 @@
 - Start and Stop the Recycler (even with items still in)
 - Prevent removal of items when the Recycler is turned on
 
-Download the Rust-Inspired Recycling prop on [Tebex](https://bzzz.tebex.io/package/5372116)
 
 ## Dependencies
 - ox_inventory
 - [community_bridge](https://github.com/The-Order-of-the-Sacred-Framework/community_bridge)
+- [bzzz_recycler](https://bzzz.tebex.io/package/5372116) *(Optional Dependency)*
 
 # Help and Support
 If you require any assistance with this script or run into any issues, I would be happy to assist you. Please open a ticket in my [Discord](https://discord.gg/FQtN5FXcG5)
