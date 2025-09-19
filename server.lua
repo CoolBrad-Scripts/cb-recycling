@@ -14,6 +14,21 @@ function RegisterRecycler()
     end
 end
 
+local function GetPlayerCoords(target)
+    local playerPed = GetPlayerPed(target)
+    return GetEntityCoords(playerPed)
+end
+
+local function tooFarAwayFromSomething(target, coords)
+    local targetCoords = GetPlayerCoords(target)
+    local dist = #(vec3(targetCoords.x, targetCoords.y, targetCoords.z) - vec3(coords.x, coords.y, coords.z))
+    if dist > 5 then
+        TriggerClientEvent('cb-gangsystem:client:Notify', target, "Too Far Away", "You are too far away from the recycler", "error")
+        return true
+    end
+    return false
+end
+
 function Scrapping(stashName, efficiency)
     local scrapping = true
     CreateThread(function()
@@ -185,6 +200,10 @@ end
 RegisterNetEvent('cb-recycling:server:OpenStash', function(stashName)
     local src = source
     if src == nil then return end
+    if not Config.Recycler[stashName] then return end
+    for _, v in pairs(Config.Recycler) do
+        if v.stashName == stashName and tooFarAwayFromSomething(src, v.coords) then return end
+    end
     Bridge.Inventory.OpenStash(src, "stash", stashName)
 end)
 
